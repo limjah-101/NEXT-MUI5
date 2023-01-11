@@ -6,6 +6,9 @@ import CssBaseline from "@mui/material/CssBaseline";
 import { CacheProvider } from "@emotion/react";
 import theme from "../src/theme";
 import createEmotionCache from "../src/createEmotionCache";
+import { SessionProvider, useSession } from "next-auth/react";
+import { useRouter } from 'next/router';
+
 
 // Client-side cache, shared for the whole session of the user in the browser.
 const clientSideEmotionCache = createEmotionCache();
@@ -28,10 +31,39 @@ export default function MyApp(props) {
             <ThemeProvider theme={theme}>
                 {/* CssBaseline kickstart an elegant, consistent, and simple baseline to build upon. */}
                 <CssBaseline />
-                <Component {...pageProps} />
+                <SessionProvider session={pageProps.session}>
+                    {Component.auth ? (
+                        <Auth isAdmin={Component.auth.isAdmin}>
+                            <Component {...pageProps} />
+                        </Auth>
+                    ) : (
+                        <Component {...pageProps} />
+                    )}
+                </SessionProvider>
             </ThemeProvider>
         </CacheProvider>
     );
+}
+
+function Auth({ children, isAdmin }) {
+    //console.log(isAdmin);
+    const router = useRouter();
+
+    const { status, data: session } = useSession({
+        required: true,
+        onUnauthenticated() {
+            router.push("/");
+        },
+    });
+
+    if (status === "loading") {
+        return <div>Loading...</div>;
+    }
+    if (isAdmin && !session.user.isAdmin) {
+        router.push(`${window.location.origin}`);
+    }
+
+    return children;
 }
 
 MyApp.propTypes = {
